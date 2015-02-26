@@ -15,6 +15,7 @@ processes = set()
 
 def main():
 	#reading input
+	os.chdir("data")
 	infileName = sys.argv[1]+".ppm"
 	f = open(infileName,'r').read().split() #list
 	
