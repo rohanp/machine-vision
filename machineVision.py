@@ -3,6 +3,8 @@
 #		by Rohan Pandit			#
 #################################
 
+from __future__ import division
+
 import numpy as np
 import sys
 import os
@@ -10,8 +12,6 @@ import subprocess
 from math import atan2, pi
 
 processes = set()
-
-dirs = ( (1,0), (1,1), (0,1), (-1,1) ) #directions
 
 def main():
 	#reading input
@@ -27,7 +27,7 @@ def main():
 	img = np.reshape(img, (height, width, 3))
 	processes.add(subprocess.Popen("display %s"%infileName, shell=True))
 
-	#img processing
+	"""#img processing
 	bw = grayscale(img)
 	writeAndDisplayOutput(bw, 'bw')
 
@@ -37,11 +37,11 @@ def main():
 
 	for i in range(6):
 		coloredBlurred = blur(img)
-	writeAndDisplayOutput(coloredBlurred, 'coloredBlurred')
+	writeAndDisplayOutput(coloredBlurred, 'coloredBlurred')"""
 	
 
 	infileName = sys.argv[1]+"_bwBlurred.ppm"
-	bwBlurredFile = open(infileName, 'r').read().split() #np.loadtxt(sys.argv[1]+'_bwBlurred.ppm')
+	bwBlurredFile = open(infileName, 'r').read().split() 
 	bwBlurredFile.pop(0)
 	width = int(bwBlurredFile.pop(0))
 	height = int(bwBlurredFile.pop(0))
@@ -53,24 +53,49 @@ def main():
 	processes.add(subprocess.Popen("display %s"%infileName, shell=True))
 
 	sobel = sobelMask(bwBlurred)
-	imgAndEdges, edges = fatedges(blurred, sobel)
-	writeAndDisplayOutput(edges, 'edges')
+	imgAndEdges, edges = fatedges(blurred.copy(), sobel)
+	writeAndDisplayOutput(imgAndEdges, 'fatEdges')
 
-	"""edges = canny(edges, sobel)
-	writeAndDisplayOutput(edges, 'thinEdges')"""
+	imgAndEdges, edges = thinEdges(blurred.copy(), edges, sobel)
+	writeAndDisplayOutput(imgAndEdges, 'thinEdges')
 
 
-def canny(edges, sobel):
+
+dirs = np.array( [(1,0), (1,1), (0,1), (-1,1)], dtype=int ) #directions
+
+def circleDetection(edges, sobel):
+	votes = np.zeros(edges.shape)
+
+	for i in range(edges.shape[0]):
+		for j in range(edges.shape[1]):
+			if edges[i][j] == 1:
+				for r in range(-edges.shape[0]/2, edges.shape[0]/2):
+					direction = dirs[ sobel[i][j][0][1] ]
+					center = np.add((i, j) + direction * r)
+
+
+
+
+def canny(img, edges, sobel):
+	pass
+
+def thinEdges(img, edges, sobel):
 	for i in range(sobel.shape[0]-1):
 		for j in range(sobel.shape[1]-1):
 			for c in range(sobel.shape[2]):
 					if edges[i][j] == 1:
 						theta = sobel[i][j][c][1]
-						compare1 = sobel[i,j + dirs[theta], c, 0]
-						compare2 = sobel[i,j - dirs[theta], c, 0]
+
+						compare1 = sobel[ i + dirs[theta][0], j + dirs[theta][1], c, 0 ] 
+						#compare1 = sobel[*np.add( (i,j), dirs[theta] ), c, 0]
+
+						compare2 = sobel[ i - dirs[theta][0], j - dirs[theta][1], c, 0 ]
 						if sobel[i][j][c][0] < compare1 or sobel[i][j][c][0] < compare2:
 							edges[i][j] = 0
-	return edges
+						else:
+							img[i][j] = [255, 0 , 0]
+
+	return img, edges
 
 
 
@@ -107,8 +132,8 @@ def sobelMask(img):
 	
 	return sobel
 
-def theta(y, x):
-	return atan2(y, x)+math.pi 
+def theta(x, y):
+	return int((abs(atan2(y,x))/3.142)*4) #scales from 0-pi to 0-3
 
 def blur(img):
 	blurred = np.zeros(img.shape) 
@@ -133,6 +158,16 @@ def grayscale(img):
 
 	return bw
 
+def toPPM(array):
+	img = np.zeros(array.shape[0], array.shape[1], 3)
+
+	for i in range(array.shape[0]):
+		for j in range(array.shape[1]):
+			if array[i][j] == 1:
+				img[i][j] = [255, 0, 0]
+
+	return img
+
 def writeAndDisplayOutput(img, ext): #ext is what filename should end with
 	outfileName = sys.argv[1] + "_" + ext + ".ppm"
 	height = img.shape[0]
@@ -156,4 +191,4 @@ def writeAndDisplayOutput(img, ext): #ext is what filename should end with
 	processes.add(subprocess.Popen("display %s"%outfileName, shell=True))
 
 if __name__ == "__main__":
-	main()
+	main()	
